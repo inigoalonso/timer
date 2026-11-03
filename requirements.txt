@@ -1,2 +1,4 @@
+-c requirements.lock
 fastapi==0.115.12
-uvicorn[standard]==0.34.2
+uvicorn==0.34.2
+websockets==17.4

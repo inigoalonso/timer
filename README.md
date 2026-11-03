@@ -1,22 +1,19 @@
 # Stage time
-Python conference countdown with separate controller and read-only display links.
 
-## Deploy
-Point DNS for timer.txoko.se at your server. Adjust ALLOWED_ORIGINS in compose.yaml if using another hostname. Run `docker compose up -d --build`. Add this to your host Caddyfile, validate it, and reload Caddy:
+Conference countdown with private controller links and read-only presenter displays. This completes the prototype's server/client workflow; see docs/acceptance.md for verified results and outstanding release acceptance.
 
-    timer.txoko.se {
-        reverse_proxy 127.0.0.1:8010
-    }
+Run Python 3.12+ in a virtual environment, then:
 
-Open https://timer.txoko.se and create a timer. Copy the display link to the presenter device. Keep the controller URL private and bookmark it. Tap Activate display on the tablet. Native wake lock needs HTTPS and browser support.
+```sh
+pip install -r requirements-dev.txt
+uvicorn app:app --host 127.0.0.1 --port 8000 --workers 1 --no-proxy-headers --no-access-log
+```
 
-## Local development
-Use Python 3.12 and a virtual environment. Install requirements.txt and run `uvicorn app:app --reload`. Open http://localhost:8000. Data defaults to data/timers.db. Run only one worker.
+Open http://localhost:8000 (the default allowed origin). If opening 127.0.0.1 instead, set BASE_URL and ALLOWED_ORIGINS accordingly. Exactly one application worker is required. SQLite WAL, per-session mutation locks and independent bounded socket queues coordinate the timers. Run tests with `python -m unittest discover -s tests -v`, JavaScript validation with `node --check static/app.js`, and local capacity verification with `python scripts/capacity.py`.
 
-## Prototype limitations
-This is a runnable first implementation, not full acceptance of the specification. QR codes, NoSleep.js fallback, session expiry, creation rate limits, command receipt history, and database migrations are not implemented. Display links are saved in the creating browser's local storage; copy the link before changing browsers. Physical device wake behaviour and cross-device latency need manual testing. Restrict access at the reverse proxy before exposing public session creation. Commands use revision checks, preventing a repeated stale command from applying twice; disconnected commands are not queued.
+- [Deployment, backup, restore and rollback](docs/deployment.md)
+- [One-page operator guide](docs/operator.md)
+- [WebSocket protocol and refinements](docs/protocol.md)
+- [Acceptance evidence and device checklist](docs/acceptance.md)
 
-SQLite stores timers and hashed access secrets. A restart retains deadlines. Stop the container before copying the complete data volume, or use SQLite's online backup API. Back up before upgrading. Rebuild with `docker compose up -d --build`; retain the prior image for rollback and do not delete the volume.
-
-## Tests
-Install requirements-dev.txt, then run `python -m unittest discover -s tests -v`. Tests cover transitions, overtime and validation. Browser rendering and wake lock have not been automated.
+Dependencies are constrained in requirements.lock; container runtime dependencies are selected by requirements.txt. Locally bundled QR Code Generator 1.4.4 and NoSleep.js 0.12.0 retain notices in static/vendor. No remote scripts or pairing services are used. The base container image is pinned by digest.

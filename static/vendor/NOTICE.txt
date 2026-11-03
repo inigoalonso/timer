@@ -1,0 +1,6 @@
+QR Code Generator 1.4.4, Copyright (c) 2009 Kazuhiko Arase.
+The bundled qrcode.js retains its original MIT licence notice.
+NoSleep.js 0.12.0: see NoSleep-LICENSE.
+Sources: https://www.npmjs.com/package/qrcode-generator/v/1.4.4
+https://www.npmjs.com/package/nosleep.js/v/0.12.0
+Both assets are bundled locally; pairing links are never sent to an external QR service.
