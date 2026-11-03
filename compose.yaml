@@ -1,0 +1,12 @@
+services:
+  countdown:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8010:8000"
+    environment:
+      ALLOWED_ORIGINS: https://timer.txoko.se
+    volumes:
+      - timer-data:/data
+volumes:
+  timer-data:
