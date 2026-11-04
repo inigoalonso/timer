@@ -58,6 +58,7 @@ test('disabled notifications never deliver', () => {
 });
 
 function browser(role, permission = 'granted', supported = true) {
+  const bodyClasses = new Set();
   const elements = new Map();
   const element = id => {
     if (!elements.has(id)) elements.set(id, {
@@ -82,7 +83,7 @@ function browser(role, permission = 'granted', supported = true) {
   }
   const context = createContext({
     document: {
-      getElementById: element, body: {classList: {toggle() {}}},
+      getElementById: element, body: {classList: {toggle(name, enabled) { if (enabled) bodyClasses.add(name); else bodyClasses.delete(name); }}},
       querySelectorAll: selector => selector === '[data-tab]' ? tabs : [], createElement: () => element(Symbol()), addEventListener() {},
     },
     location: {pathname: `/${role}/session`, hash: '#token', protocol: 'https:', host: 'timer.test', href: 'https://timer.test'},
@@ -96,7 +97,7 @@ function browser(role, permission = 'granted', supported = true) {
   if (supported) context.Notification = BrowserNotification;
   runInContext(readFileSync(join(__dirname, '../static/notifications.js'), 'utf8'), context);
   runInContext(readFileSync(join(__dirname, '../static/app.js'), 'utf8'), context);
-  return {context, element, alerts, commands, requests: () => requests};
+  return {context, element, alerts, commands, bodyClasses, requests: () => requests};
 }
 
 function runCountdown(context) {
@@ -106,6 +107,21 @@ function runCountdown(context) {
     clock=2000;render();clock=242000;render();clock=302000;render();render();
   `, context);
 }
+
+test('time-up display treatment starts at zero and clears when positive time returns', () => {
+  for (const role of ['display', 'control']) {
+    const app = browser(role);
+    runCountdown(app.context);
+    for (const mode of ['running', 'paused', 'prepared']) {
+      for (const remaining of [60000, 1, 0, -1000, 60000]) {
+        app.context.remaining = remaining;
+        app.context.timerMode = mode;
+        runInContext("state.mode=timerMode;state.deadline_utc_ms=clock+remaining;state.paused_remaining_ms=remaining;render();", app.context);
+        assert.equal(app.bodyClasses.has('time-up'), role === 'display' && remaining <= 0, `${role} ${mode} ${remaining}`);
+      }
+    }
+  }
+});
 
 test('controller requests permission only after opt-in and delivers all three notifications', async () => {
   const app = browser('control');

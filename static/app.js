@@ -85,6 +85,7 @@ function render(){
   $('presentationPhase').hidden=state.playlist_index==null;
   $('presentationPhase').textContent=state.playlist_index==null?'':`${state.playlist_index+1} / ${state.playlist.length} · ${state.playlist_phase==='qa'?'Q&A':'Presentation'}`;
   const r=state.mode==='running'?state.deadline_utc_ms-serverNow():state.paused_remaining_ms;
+  document.body.classList.toggle('time-up',display&&r<=0);
   if(notificationController)milestoneNotifications.update(state,r,online&&synced&&!!anchor);
   if(!anchor&&state.mode==='running')return;
   const n=r>0?Math.ceil(r/1000):Math.floor(-r/1000);

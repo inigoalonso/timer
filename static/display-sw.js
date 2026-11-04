@@ -1,5 +1,5 @@
 'use strict';
-const DISPLAY_CACHE = 'stage-time-display-v2';
+const DISPLAY_CACHE = 'stage-time-display-v3';
 const DISPLAY_SHELL = '/static/index.html';
 const DISPLAY_ASSETS = [DISPLAY_SHELL, '/static/style.css', '/static/app.js',
   '/static/notifications.js', '/static/display-links.js', '/static/display-pwa.js',
