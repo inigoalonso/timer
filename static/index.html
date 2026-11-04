@@ -34,6 +34,10 @@
 				<button id="reset">Reset</button><button id="minus">−1 minute</button><button id="plus">+1 minute</button>
 			</div>
 			<small id="presence"></small>
+			<div id="notificationControls" class="notification-controls">
+				<label><input id="notificationsEnabled" type="checkbox"> Browser notifications</label>
+				<small id="notificationStatus" role="status">Off</small>
+			</div>
 		</div>
 		<section id="playlist" class="playlist-section" aria-labelledby="playlistHeading">
 			<div class="playlist-heading"><h2 id="playlistHeading">Playlist</h2><small id="playlistCount">0 presentations</small></div>
@@ -67,5 +71,6 @@
 </main>
 <script src="/static/vendor/qrcode.js"></script>
 <script src="/static/vendor/NoSleep.min.js"></script>
+<script src="/static/notifications.js"></script>
 <script src="/static/app.js"></script>
 </html>

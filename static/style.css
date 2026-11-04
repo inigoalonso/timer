@@ -17,5 +17,8 @@
 .playlist-actions{grid-column:2/-1;display:flex;gap:8px;flex-wrap:wrap}
 .playlist-actions button{padding:8px 12px;min-width:44px}
 .presentation-phase{color:#a6d5ff;font-size:16px;min-height:24px}
+.notification-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}
+.notification-controls label{display:flex;align-items:center;gap:10px;min-height:44px}
+.notification-controls input[type=checkbox]{width:20px;height:20px;min-height:20px;margin:0;padding:0;accent-color:#65e6a5}
 #playlistNotice{overflow-wrap:anywhere}
 @media(max-width:540px){.playlist-entry{grid-template-columns:24px minmax(0,1fr) minmax(0,1fr);gap:10px;padding:14px 0}.playlist-entry label:first-of-type{grid-column:2/-1}.playlist-entry label:nth-of-type(2){grid-column:2}.playlist-heading small{font-size:13px}.playlist-toolbar{gap:8px}.playlist-toolbar button{padding:10px 12px}}

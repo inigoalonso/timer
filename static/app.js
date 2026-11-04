@@ -4,6 +4,18 @@ const [,role,sid] = location.pathname.split('/'), token = location.hash.slice(1)
 let state, socket, online=false, synced=false, pending=null, reconnectTimer, retry=1000, lastResponse=0, samples=[], anchor=0, clock=0, generation=0;
 let activated=false, wakeLock, wakePending=false, fallback;
 let playlistDraft=[], playlistDirty=false, playlistBase='[]', playlistConflict=false, playlistFeedback='';
+const notificationController=role==='control'&&!!sid&&!!token;
+let notificationRequestPending=false;
+const milestoneNotifications=new MilestoneNotifications((milestone,current)=>{
+  if(!notificationController||!milestoneNotifications.enabled||Notification.permission!=='granted')return;
+  try{
+    new Notification(milestone,{body:current.title+(current.playlist_phase==='qa'?' · Q&A':''),tag:`stage-time-${sid}`});
+  }catch{
+    milestoneNotifications.enabled=false;
+    $('notificationStatus').textContent='Notifications unavailable in this browser';
+    $('notificationsEnabled').checked=false;
+  }
+});
 document.body.classList.toggle('display',display);
 function message(text){$('message').textContent=text;}
 function storageGet(){try{return localStorage.getItem(sid);}catch{return null;}}
@@ -32,6 +44,7 @@ function render(){
   $('presentationPhase').hidden=state.playlist_index==null;
   $('presentationPhase').textContent=state.playlist_index==null?'':`${state.playlist_index+1} / ${state.playlist.length} · ${state.playlist_phase==='qa'?'Q&A':'Presentation'}`;
   const r=state.mode==='running'?state.deadline_utc_ms-serverNow():state.paused_remaining_ms;
+  if(notificationController)milestoneNotifications.update(state,r,online&&synced&&!!anchor);
   if(!anchor&&state.mode==='running')return;
   const n=r>0?Math.ceil(r/1000):Math.floor(-r/1000);
   const digits=(r<=0?'+':'')+(n>=3600?Math.floor(n/3600)+':'+String(Math.floor(n/60)%60).padStart(2,'0'):String(Math.floor(n/60)).padStart(2,'0'))+':'+String(n%60).padStart(2,'0');
@@ -134,6 +147,29 @@ function renderPlaylistControls(usable){
   const finished=active!=null&&!hasQA&&active>=state.playlist.length-1;
   $('nextPresentation').textContent=active==null?'Load first presentation':hasQA?'Next: Q&A':finished?'Playlist complete':'Next presentation';
   $('nextPresentation').disabled=!usable||playlistDirty||!playlistDraft.length||finished;
+}
+$('notificationControls').hidden=!notificationController;
+if(notificationController){
+  const supported='Notification' in window&&window.isSecureContext;
+  $('notificationsEnabled').disabled=!supported||Notification.permission==='denied';
+  $('notificationStatus').textContent=!supported?'Notifications require a supported browser and HTTPS (or localhost)':Notification.permission==='denied'?'Blocked in browser site settings':'Off';
+  $('notificationsEnabled').onchange=async()=>{
+    const enabled=$('notificationsEnabled').checked;
+    milestoneNotifications.enabled=false;milestoneNotifications.previous=null;
+    if(!enabled){$('notificationStatus').textContent='Off';return;}
+    if(notificationRequestPending)return;
+    notificationRequestPending=true;$('notificationsEnabled').disabled=true;
+    try{
+      const permission=Notification.permission==='granted'?'granted':await Notification.requestPermission();
+      milestoneNotifications.enabled=permission==='granted';
+      $('notificationsEnabled').checked=milestoneNotifications.enabled;
+      $('notificationStatus').textContent=permission==='granted'?'On':permission==='denied'?'Blocked in browser site settings':'Permission not granted';
+    }catch{
+      $('notificationsEnabled').checked=false;$('notificationStatus').textContent='Notifications unavailable in this browser';
+    }finally{
+      notificationRequestPending=false;$('notificationsEnabled').disabled=Notification.permission==='denied';
+    }
+  };
 }
 $('addPresentation').onclick=()=>{playlistDraft.push({title:'',duration_seconds:1800,qa_duration_seconds:300});buildPlaylist();editPlaylist();$('playlistEntries').lastElementChild.querySelector('input').focus();};
 $('savePlaylist').onclick=()=>{try{playlistFeedback='';command('set_playlist',{entries:validatePlaylist(playlistDraft)});}catch(error){playlistError(error);}};

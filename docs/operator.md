@@ -8,6 +8,14 @@
 6. Wait for Saved before assuming a command succeeded. During connection loss, controls disable and the display continues from its last known deadline. After reconnecting, review the authoritative timer. An unknown command outcome is not automatically retried. If a link is invalid/expired/replaced, obtain a current link or create a new session.
 7. Sessions expire seven days after the last successful controller change; the controller shows expiry. Display viewing does not extend it. Never clear or publish controller URLs during the event. Keep an operator device powered and test network coverage in the room.
 
+## Browser notifications
+
+On the private controller page, select **Browser notifications** and allow notifications when prompted. This enables browser notifications for five minutes left, one minute left, and time up, including the presentation title and Q&A phase when applicable. Presenter/display pages never request notification permission or send notifications. This setting applies to the current controller tab and must be enabled again after reload.
+
+Notifications require HTTPS (or localhost), a supporting browser and permission in browser site settings. If permission is blocked, change it in the browser settings. Some mobile browsers do not support desktop-style notifications; unavailable notifications do not affect the timer.
+
+Alerts occur only while the countdown is running and the controller is connected and synchronized. Each milestone fires at most once until a reset or new countdown is prepared; pause/resume and time adjustments do not repeat alerts already sent. Enabling notifications or reconnecting after a milestone does not replay missed alerts. If a delayed browser tick crosses several milestones, only the most recent milestone is notified. Keep the controller tab open: background throttling, device sleep, browser restrictions and operating-system notification settings can delay or suppress notifications. These are supplementary cues, not guaranteed alarms.
+
 ## Presentation playlists
 
 In the controller's **Playlist** section, select **Add presentation** for each speaker. Enter a title (1-120 characters), talk minutes (1-180) and Q&A minutes (0-180). Use 0 to skip Q&A. Arrow buttons reorder the list; the remove button deletes an entry. Lists can contain up to 100 presentations.

@@ -4,6 +4,8 @@ Conference countdown with private controller links and read-only presenter displ
 
 Build a presentation playlist in the controller: add titles, talk durations and Q&A durations, reorder or remove entries, then select **Save playlist**. Load a talk directly or use **Next** to move through each talk and its Q&A. Each transition prepares the countdown; select **Start** when the speaker is ready. Download/upload playlists as reusable JSON files. Saved lists persist with the session. See the [operator guide](docs/operator.md#presentation-playlists) for details.
 
+Enable **Browser notifications** on the controller for five-minute, one-minute and time-up alerts. Presenter displays never send notifications. Browser permission and HTTPS (or localhost) are required; see [notification support and limitations](docs/operator.md#browser-notifications). Run notification regression tests with `node --test tests/test_notifications.cjs`.
+
 Run Python 3.12+ in a virtual environment, then:
 
 ```sh
