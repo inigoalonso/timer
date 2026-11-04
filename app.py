@@ -231,7 +231,12 @@ async def headers(request, call_next):
     response.headers.update({'Cache-Control':'no-store', 'Referrer-Policy':'no-referrer', 'X-Content-Type-Options':'nosniff', 'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; media-src 'self' data: blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"})
     return response
 
+@app.get('/display/sw.js')
+async def display_worker():
+    return FileResponse(root/'static/display-sw.js', media_type='application/javascript')
+
 @app.get('/')
+@app.get('/display/')
 @app.get('/control/{sid}')
 @app.get('/display/{sid}')
 async def index(sid: str = ''):

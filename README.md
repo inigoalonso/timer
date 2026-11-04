@@ -6,6 +6,8 @@ The controller separates **Run**, **Playlist** and **Connect** into tabs, with l
 
 Enable **Browser notifications** in the controller's settings menu for five-minute, one-minute and time-up alerts. Presenter displays never send notifications. Browser permission and HTTPS (or localhost) are required; see [notification support and limitations](docs/operator.md#browser-notifications). Run frontend interaction and notification regression tests with `node --test tests/*.cjs`.
 
+Install **Stage time Display** from `/display/` for a reusable Home Screen app. On iOS, use Safari's **Share > Add to Home Screen**, then open the installed app and scan the controller's QR or paste its display link. The app remembers the last successfully joined session. Apple Camera links may still open in the browser; scan inside the installed app to stay in it. See [display app installation](docs/operator.md#installable-display-app).
+
 Run Python 3.12+ in a virtual environment, then:
 
 ```sh
@@ -20,4 +22,4 @@ Open http://localhost:8000 (the default allowed origin). If opening 127.0.0.1 in
 - [WebSocket protocol and refinements](docs/protocol.md)
 - [Acceptance evidence and device checklist](docs/acceptance.md)
 
-Dependencies are constrained in requirements.lock; container runtime dependencies are selected by requirements.txt. Locally bundled QR Code Generator 1.4.4, NoSleep.js 0.12.0 and Lucide 0.468.0 retain notices in static/vendor. No remote scripts, fonts or pairing services are used. The base container image is pinned by digest.
+Dependencies are constrained in requirements.lock; container runtime dependencies are selected by requirements.txt. Locally bundled QR Code Generator 1.4.4, NoSleep.js 0.12.0, Lucide 0.468.0 and jsQR 1.4.0 retain notices in static/vendor. No remote scripts, fonts or pairing services are used. QR camera frames are decoded on-device, never uploaded. The base container image is pinned by digest.

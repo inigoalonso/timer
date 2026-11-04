@@ -1,12 +1,23 @@
 <!doctype html>
 <html lang="en">
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Stage time</title>
 <link rel="stylesheet" href="/static/style.css">
 <main>
 <header id="appHeader"><h1><i data-lucide="timer"></i> Stage time</h1><div class="header-tools"><small id="connection" role="status">Ready</small><details id="settings"><summary aria-label="Settings" title="Settings"><i data-lucide="settings-2"></i></summary><div id="notificationControls"><label><input id="notificationsEnabled" type="checkbox"> Browser notifications</label><small id="notificationStatus" role="status">Off</small></div></details></div></header>
 <section id="landing"><div class="landing-clock" aria-hidden="true">30:00</div><h2>Stage time</h2><button class="primary" id="create"><i data-lucide="plus"></i>Create a timer</button></section>
+<section id="displayLauncher" hidden aria-labelledby="displayAppTitle">
+<img class="display-app-icon" src="/static/icons/display-192.png" width="72" height="72" alt="">
+<h1 id="displayAppTitle">Stage time Display</h1>
+<div class="join-actions"><button id="scanDisplay" class="primary"><i data-lucide="scan-line"></i>Scan QR</button><button id="installDisplay"><i data-lucide="smartphone"></i>Install display app</button></div>
+<div id="savedDisplayActions" class="row" hidden><button id="resumeDisplay"><i data-lucide="play"></i>Resume last display</button><button id="forgetSavedDisplay" class="icon-button" title="Forget saved display" aria-label="Forget saved display"><i data-lucide="trash-2"></i></button></div>
+<div id="scanner" hidden><video id="scanVideo" playsinline muted aria-label="QR scanner camera"></video><button id="cancelScan"><i data-lucide="x"></i>Cancel scanning</button></div>
+<form id="joinDisplay"><label>Display link<input id="joinLink" type="url" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…/display/…#…"></label><button type="submit"><i data-lucide="corner-down-right"></i>Join display</button></form>
+<p id="joinStatus" role="status"></p>
+<div id="installHelp" hidden><h2>Install display app</h2><p id="installInstructions"></p></div>
+<p id="displayUpdate" hidden role="status">An app update is ready. Close all display app windows and reopen when the presentation is finished.</p>
+</section>
 <section id="session" hidden>
 <div class="clock" id="clock"><div id="presentationPhase" class="eyebrow" hidden></div><h2 id="title"></h2><div id="digits" class="digits green">Loading</div><div class="clock-status"><span id="status" role="status">Loading</span><small id="phase"></small></div></div>
 <div id="controller">
@@ -16,7 +27,7 @@
 <section id="playlist" role="tabpanel" aria-labelledby="tab-playlist" hidden><div class="section-heading"><h2>Presentation playlist</h2><small id="playlistCount">0 presentations</small></div><div class="playlist-toolbar row"><button id="addPresentation"><i data-lucide="plus"></i>Add presentation</button><div class="file-actions"><button id="uploadPlaylist" class="icon-button" title="Upload playlist" aria-label="Upload playlist"><i data-lucide="upload"></i></button><button id="downloadPlaylist" class="icon-button" title="Download playlist" aria-label="Download playlist"><i data-lucide="download"></i></button></div><input id="playlistFile" type="file" accept=".json,application/json" hidden aria-label="Upload playlist JSON"></div><p id="playlistNotice" role="status">No presentations</p><ol id="playlistEntries" class="playlist-entries"></ol><div id="playlistSaveBar" class="save-bar" hidden><button id="savePlaylist" class="primary"><i data-lucide="save"></i>Save changes</button><button id="discardPlaylist"><i data-lucide="undo-2"></i>Discard</button></div></section>
 <section id="links" role="tabpanel" aria-labelledby="tab-links" hidden><div class="section-heading"><h2>Presenter display</h2><small id="presence"></small></div><div class="pairing-layout"><div id="qr" aria-label="Display pairing QR code"></div><div class="pairing-actions"><label>Display link<input id="displayLink" readonly></label><div class="row"><button id="copy"><i data-lucide="copy"></i>Copy link</button><a id="open" target="_blank" rel="noopener"><i data-lucide="external-link"></i>Open display</a></div><small id="pairingHelp">Scan the QR code on the presenter device.</small></div></div><details><summary><i data-lucide="key-round"></i>Private controller link</summary><div class="editor-content"><input id="controllerLink" readonly aria-label="Private controller link"><div class="row"><button id="copyController"><i data-lucide="copy"></i>Copy private link</button><a id="openController" target="_blank" rel="noopener"><i data-lucide="external-link"></i>Open controller</a></div></div></details><details><summary><i data-lucide="shield-alert"></i>Advanced</summary><div class="editor-content"><p>Replacing the display link disconnects existing displays. They must reconnect using the new link.</p><button id="rotate" class="danger"><i data-lucide="refresh-cw"></i>Replace display link</button><p id="expiry"></p></div></details></section>
 </div>
-<div id="displayConnection" class="display-connection" role="status" hidden></div><div id="displayTools" hidden><button id="activate"><i data-lucide="maximize"></i><span>Enter full screen</span></button><small id="fullscreen" role="status"></small><small id="wake" role="status"></small></div>
+<div id="displayConnection" class="display-connection" role="status" hidden></div><div id="displayTools" hidden><button id="activate"><i data-lucide="maximize"></i><span>Enter full screen</span></button><a id="installDisplayLink" href="/display/?join=1" title="Install display app" aria-label="Install display app"><i data-lucide="smartphone"></i></a><button id="changeDisplay" class="icon-button" title="Change session" aria-label="Change session"><i data-lucide="scan-line"></i></button><button id="forgetDisplay" class="icon-button" title="Forget session" aria-label="Forget session"><i data-lucide="log-out"></i></button><small id="fullscreen" role="status"></small><small id="wake" role="status"></small></div>
 </section>
 <p id="message" role="status" hidden></p>
 </main>
@@ -24,5 +35,7 @@
 <script src="/static/vendor/NoSleep.min.js"></script>
 <script src="/static/vendor/lucide.min.js"></script>
 <script src="/static/notifications.js"></script>
+<script src="/static/display-links.js"></script>
+<script src="/static/display-pwa.js"></script>
 <script src="/static/app.js"></script>
 </html>

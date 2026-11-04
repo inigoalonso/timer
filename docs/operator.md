@@ -8,6 +8,22 @@
 6. Wait for Saved before assuming a command succeeded. During connection loss, controls disable and the display continues from its last known deadline. After reconnecting, review the authoritative timer. An unknown command outcome is not automatically retried. If a link is invalid/expired/replaced, obtain a current link or create a new session.
 7. Sessions expire seven days after the last successful controller change; the controller shows expiry. Display viewing does not extend it. Never clear or publish controller URLs during the event. Keep an operator device powered and test network coverage in the room.
 
+## Installable display app
+
+Open `/display/` on the deployed HTTPS website. On iPhone/iPad, use Safari's **Share > Add to Home Screen**, keep **Open as Web App** enabled if offered, then tap **Add**. Launch **Stage time Display** using its Home Screen icon. Other supported browsers offer an install action in the browser menu or through **Install display app**. Installation is optional; existing display links still work in a browser.
+
+Inside the installed app, select **Scan QR**, grant camera permission, and scan the controller's presenter-display QR. Or paste the complete display link, including the `#` fragment, and select **Join display**. Only display links for the same website are accepted; controller links and external websites are rejected. Camera frames remain on the device. Cancel scanning, switch away, or join a timer to stop camera capture. If camera access is blocked or unavailable, paste the link instead. Installation and scanning need HTTPS (localhost is permitted for development, but a phone accessing a computer's plain-HTTP LAN address is not).
+
+The app remembers its last display link only after successful authentication and resumes it on launch. **Change session** opens the join screen without deleting the saved session; **Resume last display** returns to it. **Forget session** removes the saved link and returns to joining. Expired or replaced links are forgotten automatically and show a request for a current link. Saved links are read-only credentials: anyone using that device can reopen the display, so forget the session on shared devices. Safari and Home Screen apps may have separate storage; join from inside the installed app after installation.
+
+Apple's Camera QR scanner may open links in Safari/default browser rather than an installed web app. A website cannot reliably force those links into its Home Screen app. Open the installed app and scan there for a dependable installed-app workflow; automatic external link handling would require a separately distributed native iOS app with Universal Links.
+
+In standalone mode the browser chrome is already absent, so the activation button becomes **Keep screen awake**, not a full-screen request. Wake permissions, device settings, app switching and system restrictions still apply. The service worker does not keep a WebSocket or timer running while iOS suspends the app. Returning to the foreground re-synchronizes with the server.
+
+After the first successful online load, the display's public app shell is cached for offline launch. No timer snapshots, API responses, controller pages or session credentials are put in that cache. An already-loaded countdown can continue from its last known deadline with a warning while disconnected. A cold offline launch has no timer snapshot and waits for the server; it does not invent a current countdown. Saved display credentials remain separately in local device storage until forgotten or invalidated. Browser storage eviction may require an online launch and rejoining.
+
+Updates wait until all display app windows/tabs using the previous version close; they do not force a reload during a talk. If the join screen reports an update, close all display windows and reopen after the presentation. Keep the display app open and awake during use. Real iPhone/iPad installation, camera access, safe-area layout and wake behavior must be checked on the actual devices before an event.
+
 ## Browser notifications
 
 On the private controller page, open the settings icon in the header, select **Browser notifications** and allow notifications when prompted. This enables browser notifications for five minutes left, one minute left, and time up, including the presentation title and Q&A phase when applicable. Presenter/display pages never request notification permission or send notifications. This setting applies to the current controller tab and must be enabled again after reload.

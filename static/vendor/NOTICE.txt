@@ -7,3 +7,6 @@ Both assets are bundled locally; pairing links are never sent to an external QR 
 Lucide 0.468.0: see lucide-LICENSE (ISC, with retained Feather MIT notice).
 Source: https://www.npmjs.com/package/lucide/v/0.468.0
 Icons are bundled locally; no external scripts or fonts are loaded.
+jsQR 1.4.0: see jsQR-LICENSE (Apache-2.0).
+Source: https://www.npmjs.com/package/jsqr/v/1.4.0
+QR camera frames are decoded on the device and are never uploaded.

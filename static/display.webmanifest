@@ -1,0 +1,16 @@
+{
+  "id": "/display/",
+  "name": "Stage time Display",
+  "short_name": "Stage time",
+  "description": "Read-only presentation countdown display",
+  "start_url": "/display/",
+  "scope": "/display/",
+  "display": "standalone",
+  "background_color": "#080909",
+  "theme_color": "#080909",
+  "icons": [
+    {"src": "/static/icons/display-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/static/icons/display-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/static/icons/display-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

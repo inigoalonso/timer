@@ -3,6 +3,7 @@ const $ = id => document.getElementById(id);
 const [,role,sid] = location.pathname.split('/'), token = location.hash.slice(1), display = role === 'display';
 let state, socket, online=false, synced=false, pending=null, reconnectTimer, retry=1000, lastResponse=0, samples=[], anchor=0, clock=0, generation=0;
 let activated=false, wakeLock, wakePending=false, fallback;
+let displayRemembered=false;
 let playlistDraft=[], playlistDirty=false, playlistBase='[]', playlistConflict=false, playlistFeedback='';
 const notificationController=role==='control'&&!!sid&&!!token;
 let notificationRequestPending=false;
@@ -41,7 +42,7 @@ for(const tab of document.querySelectorAll('[data-tab]')){
 }
 function revealDisplayTools(){
   if(!display)return;document.body.classList.remove('tools-idle');clearTimeout(toolsTimer);
-  if(activated&&document.fullscreenElement&&wakeActive())toolsTimer=setTimeout(()=>document.body.classList.add('tools-idle'),4000);
+  if(activated&&(document.fullscreenElement||window.DisplayApp?.standalone())&&wakeActive())toolsTimer=setTimeout(()=>document.body.classList.add('tools-idle'),4000);
 }
 function wakeActive(){return !!(wakeLock&&!wakeLock.released||fallback?.isEnabled);}
 for(const event of ['pointermove','pointerdown','keydown','focusin'])document.addEventListener(event,revealDisplayTools);
@@ -71,6 +72,12 @@ function render(){
   $('copy').disabled=!$('displayLink').value;
   $('settings').hidden=!notificationController;
   $('displayTools').hidden=!display;
+  if(display&&window.DisplayApp){
+    const standalone=window.DisplayApp.standalone();
+    $('installDisplayLink').hidden=standalone;
+    if(standalone)buttonContent($('activate'),'sun','Keep screen awake');
+    else if(!document.documentElement.requestFullscreen)buttonContent($('activate'),'sun','Keep screen awake');
+  }
   $('displayConnection').hidden=!display||online&&synced;
   $('displayConnection').textContent=online&&synced?'':$('connection').textContent;
   renderPlaylistControls(usable);
@@ -89,7 +96,7 @@ function render(){
   const phase=r<=0?(state.mode==='running'?'Overtime':'Overtime paused'):r<=60000?'Final minute':r<=300000?'5 minutes remaining':'';if($('phase').textContent!==phase)$('phase').textContent=phase;
   $('start').disabled=!usable;buttonContent($('start'),state.mode==='running'?'pause':'play',state.mode==='running'?'Pause':state.mode==='paused'?'Resume':'Start');$('pause').disabled=!usable||state.mode!=='running';
 }
-function disconnected(){online=false;synced=false;samples=[];if(pending){message('Connection lost. Command outcome unknown; review the recovered timer before retrying.');pending=null;}$('connection').textContent='Disconnected · countdown continues from last known state';render();}
+function disconnected(){online=false;synced=false;samples=[];if(pending){message('Connection lost. Command outcome unknown; review the recovered timer before retrying.');pending=null;}$('connection').textContent=state?'Disconnected · countdown continues from last known state':'Disconnected · waiting for timer state';render();}
 function connect(){
   clearTimeout(reconnectTimer);const gen=++generation;const ws=new WebSocket((location.protocol==='https:'?'wss:':'ws:')+'//'+location.host+'/ws/'+sid);socket=ws;synced=false;samples=[];lastResponse=performance.now();
   $('connection').textContent='Connecting · synchronising';render();
@@ -101,12 +108,12 @@ function connect(){
       const end=performance.now(),rtt=end-m.sent;samples=samples.filter(s=>end-s.at<15000);samples.push({at:end,rtt,time:m.server_now_ms+rtt/2});const best=samples.reduce((a,b)=>a.rtt<b.rtt?a:b);anchor=end;clock=best.time+(end-best.at);synced=true;
     }
     $('connection').textContent=synced?'Connected':'Connected · synchronising';
-    if(m.state)apply(m.state);
+    if(m.state){apply(m.state);if(display&&!displayRemembered){window.DisplayApp?.authenticated();displayRemembered=true;}}
     if((m.type==='ack'||m.type==='error')&&pending?.request_id===m.request_id){const action=pending.action;pending=null;if(m.type==='ack'){message('Saved');if(action==='set_title'||action==='load_presentation'||action==='next_presentation')delete $('titleInput').dataset.dirty;if(m.display_url)pairing(m.display_url);}else message(m.message);}
     else if(m.type==='error')message(m.message);
     render();
   };
-  ws.onclose=e=>{if(gen!==generation)return;disconnected();if(e.code===1008){message('Invalid, expired or replaced session link. Use a current link.');return;}reconnectTimer=setTimeout(connect,retry*(.75+Math.random()*.5));retry=Math.min(15000,retry*2);};
+  ws.onclose=e=>{if(gen!==generation)return;disconnected();if(e.code===1008){if(display&&window.DisplayApp){window.DisplayApp.invalid();return;}message('Invalid, expired or replaced session link. Use a current link.');return;}reconnectTimer=setTimeout(connect,retry*(.75+Math.random()*.5));retry=Math.min(15000,retry*2);};
   ws.onerror=()=>ws.close();
 }
 function validatePlaylist(entries){
@@ -297,7 +304,7 @@ async function keepAwake(){
   }catch{$('wake').textContent='Wake prevention unavailable · disable automatic screen lock in device settings.';}
   finally{wakePending=false;revealDisplayTools();}
 }
-$('activate').onclick=event=>{if(!display)return;if(event?.detail)$('activate').blur();activated=true;keepAwake();if(document.fullscreenElement){document.exitFullscreen();return;}if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().then(()=>{$('fullscreen').textContent='Full screen active';revealDisplayTools();}).catch(()=>{$('fullscreen').textContent='Full screen declined';revealDisplayTools();});else $('fullscreen').textContent='Full screen unavailable';};
+$('activate').onclick=event=>{if(!display)return;if(event?.detail)$('activate').blur();activated=true;keepAwake();if(window.DisplayApp?.standalone()){$('fullscreen').textContent='';revealDisplayTools();return;}if(document.fullscreenElement){document.exitFullscreen();return;}if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().then(()=>{$('fullscreen').textContent='Full screen active';revealDisplayTools();}).catch(()=>{$('fullscreen').textContent='Full screen declined';revealDisplayTools();});else $('fullscreen').textContent='Browser full screen unavailable';};
 document.addEventListener('fullscreenchange',()=>{$('fullscreen').textContent=document.fullscreenElement?'Full screen active':'Full screen exited';buttonContent($('activate'),document.fullscreenElement?'minimize':'maximize',document.fullscreenElement?'Exit full screen':'Enter full screen');revealDisplayTools();render();});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){synced=false;samples=[];$('connection').textContent='Synchronising after return';probe();render();if(activated)keepAwake();}else{wakeLock?.release();fallback?.disable();}});
 window.addEventListener('pagehide',()=>{wakeLock?.release();fallback?.disable();});

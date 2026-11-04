@@ -154,6 +154,30 @@ class Integration(unittest.TestCase):
             self.command(controller, action='set_playlist', payload={'entries': []})
             self.assertEqual(self.outcome(controller)['type'], 'ack')
 
+    def test_display_installation_routes(self):
+        page = self.client.get('/display/')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('displayLauncher', page.text)
+        worker = self.client.get('/display/sw.js')
+        self.assertEqual(worker.status_code, 200)
+        self.assertIn('javascript', worker.headers['content-type'])
+        self.assertIn('DISPLAY_CACHE', worker.text)
+        self.assertNotIn('<html', worker.text)
+        manifest = self.client.get('/static/display.webmanifest').json()
+        self.assertEqual(manifest['id'], '/display/')
+        self.assertEqual(manifest['start_url'], '/display/')
+        self.assertEqual(manifest['scope'], '/display/')
+        self.assertEqual(manifest['display'], 'standalone')
+        for field in ('id', 'start_url', 'scope'):
+            self.assertNotIn('#', manifest[field])
+            self.assertNotIn('?', manifest[field])
+        for icon in manifest['icons']:
+            response = self.client.get(icon['src'])
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.content.startswith(b'\x89PNG\r\n\x1a\n'))
+        self.assertEqual(self.client.get('/static/icons/apple-touch-icon.png').status_code, 200)
+        self.assertEqual(self.client.get('/static/vendor/jsQR.js').status_code, 200)
+
     def test_security_and_health(self):
         self.assertEqual(self.client.get('/readyz').status_code,200)
         self.assertIn('Content-Security-Policy',self.client.get('/').headers)
