@@ -70,3 +70,15 @@ class TimerTests(unittest.TestCase):
         edited = self.change(running, 'set_playlist', {'entries': []})
         self.assertEqual(edited['deadline_utc_ms'], running['deadline_utc_ms'])
         self.assertIsNone(edited['playlist_index'])
+
+    def test_optional_speaker(self):
+        entry = dict(title='Talk', duration_seconds=600, qa_duration_seconds=0)
+        for speaker in ('Ada Lovelace', '', 'x' * 120):
+            state = self.change(initial(), 'set_playlist', {'entries': [dict(entry, speaker=speaker), entry]})
+            self.assertEqual(state['playlist'][0]['speaker'], speaker)
+            self.assertNotIn('speaker', state['playlist'][1])
+            loaded = self.change(state, 'load_presentation', {'index': 0})
+            self.assertEqual(loaded['playlist'][0]['speaker'], speaker)
+        for speaker in (None, 42, True, [], 'x' * 121):
+            with self.assertRaises(ValueError):
+                self.change(initial(), 'set_playlist', {'entries': [dict(entry, speaker=speaker)]})

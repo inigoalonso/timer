@@ -112,8 +112,10 @@ function connect(){
 function validatePlaylist(entries){
   if(!Array.isArray(entries)||entries.length>100)throw Error('Use at most 100 presentations.');
   return entries.map(entry=>{
-    if(!entry||typeof entry!=='object'||Array.isArray(entry)||Object.keys(entry).sort().join(',')!=='duration_seconds,qa_duration_seconds,title')throw Error('Each presentation needs a title, duration and Q&A duration.');
+    const required=['title','duration_seconds','qa_duration_seconds'];
+    if(!entry||typeof entry!=='object'||Array.isArray(entry)||!required.every(field=>Object.hasOwn(entry,field))||Object.keys(entry).some(field=>!required.includes(field)&&field!=='speaker'))throw Error('Each presentation needs a title, duration and Q&A duration.');
     if(typeof entry.title!=='string'||!entry.title.trim()||entry.title.length>120)throw Error('Presentation titles must contain 1–120 characters.');
+    if(Object.hasOwn(entry,'speaker')&&(typeof entry.speaker!=='string'||entry.speaker.length>120))throw Error('Speaker must be text of at most 120 characters.');
     for(const [field,min] of [['duration_seconds',60],['qa_duration_seconds',0]]){
       const duration=entry[field];
       if(!Number.isInteger(duration)||duration<min||duration>10800||duration%60)throw Error('Talks need 1–180 whole minutes; Q&A needs 0–180.');
@@ -155,13 +157,13 @@ function buildPlaylist(){
     const number=document.createElement('span');number.className='playlist-number';number.textContent=index+1;
     const description=document.createElement('span');description.className='playlist-summary';
     const name=document.createElement('strong'),durations=document.createElement('small');
-    function summarize(){name.textContent=entry.title||'Untitled presentation';durations.textContent=`${entry.duration_seconds/60} min talk · ${entry.qa_duration_seconds/60} min Q&A`;}
+    function summarize(){name.textContent=entry.title||'Untitled presentation';durations.textContent=`${entry.speaker?entry.speaker+' · ':''}${entry.duration_seconds/60} min talk · ${entry.qa_duration_seconds/60} min Q&A`;}
     summarize();description.append(name,durations);const edit=document.createElement('i');edit.setAttribute('data-lucide','pencil');summary.append(grip,number,description,edit);details.append(summary);
     const fields=document.createElement('div');fields.className='playlist-fields';
-    for(const [field,label,type,min] of [['title','Title','text',null],['duration_seconds','Talk (min)','number',1],['qa_duration_seconds','Q&A (min)','number',0]]){
+    for(const [field,label,type,min] of [['title','Title','text',null],['speaker','Speaker','text',null],['duration_seconds','Talk (min)','number',1],['qa_duration_seconds','Q&A (min)','number',0]]){
       const wrapper=document.createElement('label');wrapper.textContent=label;
       const input=document.createElement('input');input.type=type;input.dataset.field=field;input.setAttribute('aria-label',`${label}, presentation ${index+1}`);
-      if(type==='text'){input.maxLength=120;input.value=entry[field];input.required=true;}
+      if(type==='text'){input.maxLength=120;input.value=entry[field]??'';input.required=field==='title';}
       else{input.min=min;input.max=180;input.step=1;input.required=true;input.value=entry[field]/60;}
       input.oninput=()=>{entry[field]=type==='text'?input.value:input.value===''?null:Number(input.value)*60;summarize();editPlaylist();};
       wrapper.append(input);fields.append(wrapper);
@@ -220,7 +222,7 @@ function buildRunList(){
     const row=document.createElement('li');row.className='run-entry';row.classList.toggle('active',state.playlist_index===index);
     const qaNext=state.playlist_index!=null&&state.playlist_phase==='talk'&&state.playlist[state.playlist_index]?.qa_duration_seconds;
     row.classList.toggle('next',!qaNext&&index===(state.playlist_index==null?0:state.playlist_index+1));
-    const text=document.createElement('div');text.className='run-entry-title';const title=document.createElement('h3');title.textContent=`${index+1}. ${entry.title}`;const durations=document.createElement('small');durations.textContent=`${entry.duration_seconds/60} min talk${entry.qa_duration_seconds?` · ${entry.qa_duration_seconds/60} min Q&A`:''}`;text.append(title,durations);
+    const text=document.createElement('div');text.className='run-entry-title';const title=document.createElement('h3');title.textContent=`${index+1}. ${entry.title}`;const durations=document.createElement('small');durations.textContent=`${entry.speaker?entry.speaker+' · ':''}${entry.duration_seconds/60} min talk${entry.qa_duration_seconds?` · ${entry.qa_duration_seconds/60} min Q&A`:''}`;text.append(title,durations);
     const actions=document.createElement('div');actions.className='row';
     for(const phase of entry.qa_duration_seconds?['talk','qa']:['talk']){const button=document.createElement('button');buttonContent(button,'corner-down-right',phase==='talk'?'Load talk':'Load Q&A');button.setAttribute('aria-label',`Load ${phase==='talk'?'talk':'Q&A'} ${index+1}`);button.onclick=()=>replace('load_presentation',{index,phase});actions.append(button);}
     row.append(text,actions);$('runEntries').append(row);

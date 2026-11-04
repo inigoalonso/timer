@@ -93,7 +93,7 @@ class Integration(unittest.TestCase):
                 server.db.execute('PRAGMA query_only=OFF')
 
     def test_playlist_save_transition_and_reconnect(self):
-        entries = [dict(title='Opening', duration_seconds=600, qa_duration_seconds=120),
+        entries = [dict(title='Opening', speaker='Ada Lovelace', duration_seconds=600, qa_duration_seconds=120),
                    dict(title='Closing', duration_seconds=900, qa_duration_seconds=0)]
         with self.socket() as controller:
             self.assertEqual(controller.receive_json()['state']['playlist'], [])
@@ -132,7 +132,10 @@ class Integration(unittest.TestCase):
             for index, bad in enumerate(([dict(entries[0], unexpected=True)], entries + [entries[0]],
                                          [dict(entries[0], duration_seconds=True)],
                                          [dict(entries[0], title=' ')],
-                                         [dict(entries[0], qa_duration_seconds=-60)])):
+                                         [dict(entries[0], qa_duration_seconds=-60)],
+                                         [dict(entries[0], speaker=None)],
+                                         [dict(entries[0], speaker=123)],
+                                         [dict(entries[0], speaker='x' * 121)])):
                 self.command(controller, action='set_playlist', revision=1, request='invalid-'+str(index),
                              payload={'entries': bad})
                 self.assertEqual(self.outcome(controller)['code'], 'invalid_transition')

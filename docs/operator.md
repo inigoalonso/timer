@@ -24,13 +24,13 @@ In the controller's **Playlist** tab, select **Add presentation** for each speak
 
 In **Run**, select **Load first presentation**, or **Load talk** / **Load Q&A** beside a saved entry. The active row is highlighted; **Up next** names the next phase and its duration. **Load Q&A** prepares the current speaker's questions; **Load next talk** prepares the following talk. Zero-minute Q&A is skipped, and the final phase shows **Playlist complete**. Loading does not start the timer: select **Start** when ready. Presenter displays show the title, position and talk/Q&A phase. Editing the standalone title or setting a standalone duration clears playlist selection; pause, adjustments and reset keep it.
 
-The **Download playlist** icon exports the current valid list, including unsaved edits, as `stage-time-playlist.json`. No credentials are included. The **Upload playlist** icon validates a JSON file and replaces the local draft after confirmation; select **Save changes** to apply it. Uploading does not change the countdown. Invalid files leave the list untouched. Files must be at most 128 KiB and use this versioned format (durations are seconds in whole-minute increments):
+The **Download playlist** icon exports the current valid list, including unsaved edits, as `stage-time-playlist.json`. No credentials are included. The **Upload playlist** icon validates a JSON file and replaces the local draft after confirmation; select **Save changes** to apply it. Uploading does not change the countdown. Invalid files leave the list untouched. Each entry can include an optional `speaker` string (up to 120 characters, empty allowed). Speaker names are editable in Playlist, shown in playlist and Run summaries, and preserved on save and download. Existing files without `speaker` remain valid. Files must be at most 128 KiB and use this versioned format (durations are seconds in whole-minute increments):
 
 ```json
 {
 	"version": 1,
 	"presentations": [
-		{"title": "Opening keynote", "duration_seconds": 1200, "qa_duration_seconds": 300},
+		{"title": "Opening keynote", "speaker": "Ada Lovelace", "duration_seconds": 1200, "qa_duration_seconds": 300},
 		{"title": "Closing remarks", "duration_seconds": 600, "qa_duration_seconds": 0}
 	]
 }

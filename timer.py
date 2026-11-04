@@ -15,10 +15,13 @@ def validate_playlist(entries):
     if not isinstance(entries, list) or len(entries) > 100:
         raise ValueError('Use at most 100 presentations')
     for entry in entries:
-        if not isinstance(entry, dict) or set(entry) != {'title', 'duration_seconds', 'qa_duration_seconds'}:
+        required = {'title', 'duration_seconds', 'qa_duration_seconds'}
+        if not isinstance(entry, dict) or not required <= set(entry) or set(entry) - required - {'speaker'}:
             raise ValueError('Each presentation needs a title, duration and Q&A duration')
         if not isinstance(entry['title'], str) or not entry['title'].strip() or len(entry['title']) > 120:
             raise ValueError('Presentation titles must contain 1–120 characters')
+        if 'speaker' in entry and (not isinstance(entry['speaker'], str) or len(entry['speaker']) > 120):
+            raise ValueError('Speaker must be text of at most 120 characters')
         for field, minimum in (('duration_seconds', 60), ('qa_duration_seconds', 0)):
             duration = entry[field]
             if type(duration) is not int or not minimum <= duration <= 10800 or duration % 60:

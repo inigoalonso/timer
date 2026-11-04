@@ -210,3 +210,20 @@ test('playlist reordering marks drafts dirty and rejects invalid destinations', 
   runInContext('reorderPresentation(0,null);reorderPresentation(0,99);', app.context);
   assert.equal(runInContext('playlistDraft[0].title', app.context), 'Second');
 });
+
+test('playlist speaker is optional, validated and retained through JSON round trips', () => {
+  const app = browser('control');
+  const entries = [{title: 'Talk', duration_seconds: 600, qa_duration_seconds: 0},
+    {title: 'Keynote', speaker: 'Ada Lovelace', duration_seconds: 900, qa_duration_seconds: 300}];
+  app.context.speakerEntries = entries;
+  const exported = runInContext('JSON.stringify({version:1,presentations:validatePlaylist(speakerEntries)})', app.context);
+  assert.deepEqual(JSON.parse(exported).presentations, entries);
+  for (const speaker of [null, 42, true, [], 'x'.repeat(121)]) {
+    app.context.invalidSpeaker = speaker;
+    assert.throws(() => runInContext('validatePlaylist([{...speakerEntries[0],speaker:invalidSpeaker}])', app.context), /Speaker must be text/);
+  }
+  for (const speaker of ['', 'x'.repeat(120)]) {
+    app.context.validSpeaker = speaker;
+    assert.equal(runInContext('validatePlaylist([{...speakerEntries[0],speaker:validSpeaker}])[0].speaker', app.context), speaker);
+  }
+});

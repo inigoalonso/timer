@@ -100,6 +100,7 @@ class TitlePayload(StrictModel):
 
 class Presentation(StrictModel):
     title: StrictStr = Field(min_length=1, max_length=120)
+    speaker: StrictStr = Field(default='', max_length=120)
     duration_seconds: StrictInt = Field(ge=60, le=10800, multiple_of=60)
     qa_duration_seconds: StrictInt = Field(ge=0, le=10800, multiple_of=60)
 
