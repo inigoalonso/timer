@@ -8,4 +8,4 @@ COPY scripts/backup.py scripts/backup.py
 USER app
 ENV DATABASE_PATH=/data/timers.db
 EXPOSE 8000
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-proxy-headers", "--ws-max-size", "4096", "--no-access-log"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-proxy-headers", "--ws-max-size", "131072", "--no-access-log"]

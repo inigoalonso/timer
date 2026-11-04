@@ -3,6 +3,7 @@ const $ = id => document.getElementById(id);
 const [,role,sid] = location.pathname.split('/'), token = location.hash.slice(1), display = role === 'display';
 let state, socket, online=false, synced=false, pending=null, reconnectTimer, retry=1000, lastResponse=0, samples=[], anchor=0, clock=0, generation=0;
 let activated=false, wakeLock, wakePending=false, fallback;
+let playlistDraft=[], playlistDirty=false, playlistBase='[]', playlistConflict=false, playlistFeedback='';
 document.body.classList.toggle('display',display);
 function message(text){$('message').textContent=text;}
 function storageGet(){try{return localStorage.getItem(sid);}catch{return null;}}
@@ -14,7 +15,7 @@ function pairing(url){
 $('create').onclick=async()=>{ $('create').disabled=true;try{const r=await fetch('/api/sessions',{method:'POST'});if(!r.ok)throw Error('Could not create timer. Try again later.');const d=await r.json();try{localStorage.setItem(d.controller.split('/')[2].split('#')[0],location.origin+d.display);}catch{}location.href=d.controller;}catch(e){message(e.message);$('create').disabled=false;}};
 function serverNow(){return clock+performance.now()-anchor;}
 function probe(){if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type:'ping',sent:performance.now()}));}
-function apply(s){if(!state||s.revision>=state.revision){state=s;$('title').textContent=s.title;if(document.activeElement!==$('titleInput')&&!$('titleInput').dataset.dirty)$('titleInput').value=s.title;$('presence').textContent=`${s.connected_display_count} display(s) connected · reset duration ${s.selected_duration_seconds/60} min`;$('expiry').textContent='Expires '+new Date(s.expires_at_ms).toLocaleString();render();}}
+function apply(s){if(!state||s.revision>=state.revision){state=s;syncPlaylist();$('title').textContent=s.title;if(document.activeElement!==$('titleInput')&&!$('titleInput').dataset.dirty)$('titleInput').value=s.title;$('presence').textContent=`${s.connected_display_count} display(s) connected · reset duration ${s.selected_duration_seconds/60} min`;$('expiry').textContent='Expires '+new Date(s.expires_at_ms).toLocaleString();render();}}
 function command(action,payload={}){
   if(!online||!synced||pending||!state)return;
   const request_id=crypto.randomUUID();pending={request_id,action};message('Waiting for acknowledgement…');render();
@@ -26,7 +27,10 @@ function render(){
   const usable=online&&synced&&!pending;
   for(const b of document.querySelectorAll('#controller button'))b.disabled=!usable;
   $('copy').disabled=!$('displayLink').value;
+  renderPlaylistControls(usable);
   if(!state)return;
+  $('presentationPhase').hidden=state.playlist_index==null;
+  $('presentationPhase').textContent=state.playlist_index==null?'':`${state.playlist_index+1} / ${state.playlist.length} · ${state.playlist_phase==='qa'?'Q&A':'Presentation'}`;
   const r=state.mode==='running'?state.deadline_utc_ms-serverNow():state.paused_remaining_ms;
   if(!anchor&&state.mode==='running')return;
   const n=r>0?Math.ceil(r/1000):Math.floor(-r/1000);
@@ -51,13 +55,112 @@ function connect(){
     }
     $('connection').textContent=synced?'Connected':'Connected · synchronising';
     if(m.state)apply(m.state);
-    if((m.type==='ack'||m.type==='error')&&pending?.request_id===m.request_id){const action=pending.action;pending=null;if(m.type==='ack'){message('Saved');if(action==='set_title')delete $('titleInput').dataset.dirty;if(m.display_url)pairing(m.display_url);}else message(m.message);}
+    if((m.type==='ack'||m.type==='error')&&pending?.request_id===m.request_id){const action=pending.action;pending=null;if(m.type==='ack'){message('Saved');if(action==='set_title'||action==='load_presentation'||action==='next_presentation')delete $('titleInput').dataset.dirty;if(m.display_url)pairing(m.display_url);}else message(m.message);}
     else if(m.type==='error')message(m.message);
     render();
   };
   ws.onclose=e=>{if(gen!==generation)return;disconnected();if(e.code===1008){message('Invalid, expired or replaced session link. Use a current link.');return;}reconnectTimer=setTimeout(connect,retry*(.75+Math.random()*.5));retry=Math.min(15000,retry*2);};
   ws.onerror=()=>ws.close();
 }
+function validatePlaylist(entries){
+  if(!Array.isArray(entries)||entries.length>100)throw Error('Use at most 100 presentations.');
+  return entries.map(entry=>{
+    if(!entry||typeof entry!=='object'||Array.isArray(entry)||Object.keys(entry).sort().join(',')!=='duration_seconds,qa_duration_seconds,title')throw Error('Each presentation needs a title, duration and Q&A duration.');
+    if(typeof entry.title!=='string'||!entry.title.trim()||entry.title.length>120)throw Error('Presentation titles must contain 1–120 characters.');
+    for(const [field,min] of [['duration_seconds',60],['qa_duration_seconds',0]]){
+      const duration=entry[field];
+      if(!Number.isInteger(duration)||duration<min||duration>10800||duration%60)throw Error('Talks need 1–180 whole minutes; Q&A needs 0–180.');
+    }
+    return {...entry};
+  });
+}
+function syncPlaylist(){
+  const saved=JSON.stringify(state.playlist||[]);
+  if(!playlistDirty||saved===JSON.stringify(playlistDraft)){
+    const changed=JSON.stringify(playlistDraft)!==saved;
+    playlistBase=saved;playlistDirty=false;playlistConflict=false;
+    if(changed){playlistDraft=JSON.parse(saved);buildPlaylist();}
+  }else playlistConflict=saved!==playlistBase;
+}
+function editPlaylist(){playlistDirty=true;playlistFeedback='';render();}
+function playlistError(error){playlistFeedback=error.message;message(error.message);render();}
+function buildPlaylist(){
+  $('playlistEntries').replaceChildren();
+  playlistDraft.forEach((entry,index)=>{
+    const row=document.createElement('li');row.className='playlist-entry';
+    const number=document.createElement('span');number.className='playlist-number';number.textContent=index+1;row.append(number);
+    for(const [field,label,type,min] of [['title','Title','text',null],['duration_seconds','Talk (min)','number',1],['qa_duration_seconds','Q&A (min)','number',0]]){
+      const wrapper=document.createElement('label');wrapper.textContent=label;
+      const input=document.createElement('input');input.type=type;input.dataset.field=field;input.setAttribute('aria-label',`${label}, presentation ${index+1}`);
+      if(type==='text'){input.maxLength=120;input.value=entry[field];input.required=true;}
+      else{input.min=min;input.max=180;input.step=1;input.value=entry[field]/60;}
+      input.oninput=()=>{entry[field]=type==='text'?input.value:input.value===''?null:Number(input.value)*60;editPlaylist();};
+      wrapper.append(input);row.append(wrapper);
+    }
+    const actions=document.createElement('div');actions.className='playlist-actions';
+    for(const [action,label,text] of [['up','Move up','↑'],['down','Move down','↓'],['remove','Remove presentation','×'],['talk','Load presentation','Load talk'],['qa','Load Q&A','Load Q&A']]){
+      const button=document.createElement('button');button.type='button';button.textContent=text;button.title=label;button.setAttribute('aria-label',`${label} ${index+1}`);button.dataset.action=action;
+      button.onclick=()=>{
+        if(action==='talk'||action==='qa'){replace('load_presentation',{index,phase:action});return;}
+        if(action==='remove')playlistDraft.splice(index,1);
+        else{const target=index+(action==='up'?-1:1);[playlistDraft[index],playlistDraft[target]]=[playlistDraft[target],playlistDraft[index]];}
+        buildPlaylist();editPlaylist();
+        const targetRow=$('playlistEntries').children[Math.min(index,playlistDraft.length-1)];
+        targetRow?.querySelector(action==='remove'?'input':`[data-action="${action}"]`)?.focus();
+      };
+      actions.append(button);
+    }
+    row.append(actions);$('playlistEntries').append(row);
+  });
+}
+function renderPlaylistControls(usable){
+  const editable=!!state&&!pending;
+  $('addPresentation').disabled=!editable||playlistDraft.length>=100;
+  $('uploadPlaylist').disabled=!editable;
+  $('downloadPlaylist').disabled=!editable;
+  $('savePlaylist').disabled=!usable||!playlistDirty||playlistConflict;
+  $('discardPlaylist').disabled=!editable||!playlistDirty;
+  $('playlistCount').textContent=`${playlistDraft.length} presentation${playlistDraft.length===1?'':'s'}`;
+  $('playlistNotice').textContent=playlistConflict?'Playlist changed on another controller. Download your edits or discard them to use the saved list.':playlistFeedback|| (playlistDirty?'Unsaved changes':playlistDraft.length?'Saved':'No presentations');
+  for(const [index,row] of [...$('playlistEntries').children].entries()){
+    row.classList.toggle('active',!playlistDirty&&state?.playlist_index===index);
+    for(const input of row.querySelectorAll('input'))input.disabled=!editable;
+    for(const button of row.querySelectorAll('button')){
+      const action=button.dataset.action;
+      button.disabled=action==='talk'||action==='qa'?!usable||playlistDirty||(action==='qa'&&!playlistDraft[index].qa_duration_seconds):!editable||(action==='up'&&index===0)||(action==='down'&&index===playlistDraft.length-1);
+    }
+  }
+  const active=state?.playlist_index, hasQA=active!=null&&state.playlist_phase==='talk'&&state.playlist[active]?.qa_duration_seconds;
+  const finished=active!=null&&!hasQA&&active>=state.playlist.length-1;
+  $('nextPresentation').textContent=active==null?'Load first presentation':hasQA?'Next: Q&A':finished?'Playlist complete':'Next presentation';
+  $('nextPresentation').disabled=!usable||playlistDirty||!playlistDraft.length||finished;
+}
+$('addPresentation').onclick=()=>{playlistDraft.push({title:'',duration_seconds:1800,qa_duration_seconds:300});buildPlaylist();editPlaylist();$('playlistEntries').lastElementChild.querySelector('input').focus();};
+$('savePlaylist').onclick=()=>{try{playlistFeedback='';command('set_playlist',{entries:validatePlaylist(playlistDraft)});}catch(error){playlistError(error);}};
+$('discardPlaylist').onclick=()=>{playlistDirty=false;playlistFeedback='';syncPlaylist();render();};
+$('nextPresentation').onclick=()=>replace('next_presentation');
+$('downloadPlaylist').onclick=()=>{
+  try{
+    const data={version:1,presentations:validatePlaylist(playlistDraft)};
+    const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)+'\n'],{type:'application/json'}));
+    const link=document.createElement('a');link.href=url;link.download='stage-time-playlist.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    message('Playlist downloaded');
+  }catch(error){playlistError(error);}
+};
+$('uploadPlaylist').onclick=()=>$('playlistFile').click();
+$('playlistFile').onchange=async()=>{
+  const file=$('playlistFile').files[0];$('playlistFile').value='';if(!file)return;
+  const original=JSON.stringify(playlistDraft), revision=state?.revision;
+  try{
+    if(file.size>131072)throw Error('Playlist file must be at most 128 KiB.');
+    const data=JSON.parse(await file.text());
+    if(!data||typeof data!=='object'||Array.isArray(data)||data.version!==1||Object.keys(data).sort().join(',')!=='presentations,version')throw Error('Expected a Stage time playlist JSON file (version 1).');
+    const entries=validatePlaylist(data.presentations);
+    if(pending||revision!==state?.revision||original!==JSON.stringify(playlistDraft))throw Error('The playlist changed while reading the file. Upload it again.');
+    if(playlistDraft.length&&!confirm('Replace the playlist with this file? The current countdown will not change.'))return;
+    playlistDraft=entries;buildPlaylist();editPlaylist();message('Playlist uploaded. Save playlist to apply it.');
+  }catch(error){playlistError(error instanceof SyntaxError?Error('Invalid JSON playlist file.'):error);}
+};
 if(sid&&token){$('landing').hidden=true;$('session').hidden=false;$('controller').hidden=display;$('controllerLink').value=location.href;$('openController').href=location.href;pairing(storageGet());connect();}
 for(const m of [10,15,20,30,45,60]){const b=document.createElement('button');b.textContent=m+' min';b.onclick=()=>replace('set_duration',{seconds:m*60});$('presets').append(b);}
 $('custom').onclick=()=>{const m=Number($('minutes').value);if(!Number.isInteger(m)||m<1||m>180){message('Use 1–180 whole minutes');return;}replace('set_duration',{seconds:m*60});};

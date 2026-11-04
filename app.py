@@ -38,7 +38,7 @@ ORIGINS = [value.strip() for value in os.getenv('ALLOWED_ORIGINS', BASE_URL).spl
 if not all(valid_origin(value) for value in ORIGINS):
     raise RuntimeError('ALLOWED_ORIGINS must contain complete origins without paths')
 TTL = int(os.getenv('SESSION_TTL_DAYS', '7')) * 86400000
-MAX_SIZE = int(os.getenv('MAX_MESSAGE_BYTES', '4096'))
+MAX_SIZE = int(os.getenv('MAX_MESSAGE_BYTES', '131072'))
 MAX_CONNECTIONS = int(os.getenv('MAX_CONNECTIONS', '500'))
 CREATE_LIMIT = int(os.getenv('CREATE_PER_MINUTE', '10'))
 AUTH_LIMIT = int(os.getenv('AUTH_PER_MINUTE', '30'))
@@ -88,7 +88,8 @@ class Command(StrictModel):
     type: Literal['command']
     request_id: StrictStr = Field(min_length=1, max_length=100)
     expected_revision: StrictInt = Field(ge=0)
-    action: Literal['start','pause','reset','set_duration','adjust_time','set_title','rotate_display']
+    action: Literal['start','pause','reset','set_duration','adjust_time','set_title','rotate_display',
+                    'set_playlist','load_presentation','next_presentation']
     payload: dict = Field(default_factory=dict)
 
 class SecondsPayload(StrictModel):
@@ -96,6 +97,18 @@ class SecondsPayload(StrictModel):
 
 class TitlePayload(StrictModel):
     text: StrictStr = Field(max_length=120)
+
+class Presentation(StrictModel):
+    title: StrictStr = Field(min_length=1, max_length=120)
+    duration_seconds: StrictInt = Field(ge=60, le=10800, multiple_of=60)
+    qa_duration_seconds: StrictInt = Field(ge=0, le=10800, multiple_of=60)
+
+class PlaylistPayload(StrictModel):
+    entries: list[Presentation] = Field(max_length=100)
+
+class LoadPresentationPayload(StrictModel):
+    index: StrictInt = Field(ge=0, le=99)
+    phase: Literal['talk', 'qa']
 
 class EmptyPayload(StrictModel):
     pass
@@ -110,6 +123,9 @@ class Snapshot(StrictModel):
     server_now_ms: StrictInt
     connected_display_count: StrictInt
     expires_at_ms: StrictInt
+    playlist: list[Presentation] = Field(default_factory=list)
+    playlist_index: StrictInt | None = None
+    playlist_phase: Literal['talk', 'qa'] | None = None
 
 class Outgoing(StrictModel):
     type: Literal['state', 'ack', 'error', 'pong']
@@ -147,7 +163,7 @@ def limited(key, count):
 
 def snapshot(sid):
     row = get(sid)
-    s = json.loads(row[2])
+    s = initial() | json.loads(row[2])
     s.update(server_now_ms=now(), connected_display_count=sum(c.role == 'display' for c in clients.get(sid, ())), expires_at_ms=row[3])
     return s
 
@@ -308,9 +324,13 @@ async def socket(ws: WebSocket, sid: str):
                         outcome.update(type='error',code='revision_conflict',message='Timer changed. Review and retry.',state=snapshot(sid))
                     else:
                         try:
-                            payload_model = {'set_duration': SecondsPayload, 'adjust_time': SecondsPayload, 'set_title': TitlePayload}.get(command.action, EmptyPayload)
+                            payload_model = {'set_duration': SecondsPayload, 'adjust_time': SecondsPayload,
+                                             'set_title': TitlePayload, 'set_playlist': PlaylistPayload,
+                                             'load_presentation': LoadPresentationPayload}.get(command.action, EmptyPayload)
                             payload_model.model_validate(command.payload)
-                            expected_keys = {'set_duration': {'seconds'}, 'adjust_time': {'seconds'}, 'set_title': {'text'}}.get(command.action, set())
+                            expected_keys = {'set_duration': {'seconds'}, 'adjust_time': {'seconds'},
+                                             'set_title': {'text'}, 'set_playlist': {'entries'},
+                                             'load_presentation': {'index', 'phase'}}.get(command.action, set())
                             if set(command.payload) != expected_keys:
                                 raise ValueError('Unexpected command payload')
                             if command.action == 'rotate_display':

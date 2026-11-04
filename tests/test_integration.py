@@ -92,6 +92,65 @@ class Integration(unittest.TestCase):
             finally:
                 server.db.execute('PRAGMA query_only=OFF')
 
+    def test_playlist_save_transition_and_reconnect(self):
+        entries = [dict(title='Opening', duration_seconds=600, qa_duration_seconds=120),
+                   dict(title='Closing', duration_seconds=900, qa_duration_seconds=0)]
+        with self.socket() as controller:
+            self.assertEqual(controller.receive_json()['state']['playlist'], [])
+            self.command(controller, action='set_playlist', payload={'entries': entries})
+            self.assertEqual(self.outcome(controller)['type'], 'ack')
+            self.command(controller, action='set_playlist', payload={'entries': entries})
+            self.assertEqual(self.outcome(controller)['revision'], 1)
+            with self.socket('display') as display:
+                self.assertEqual(display.receive_json()['state']['playlist'], entries)
+                self.command(display, action='set_playlist', revision=1, payload={'entries': []})
+                self.assertEqual(self.outcome(display)['code'], 'read_only')
+                self.command(controller, action='load_presentation', revision=1, request='load',
+                             payload={'index': 0, 'phase': 'talk'})
+                self.assertEqual(self.outcome(controller)['type'], 'ack')
+                state = display.receive_json()['state']
+                self.assertEqual((state['title'], state['mode'], state['playlist_phase']),
+                                 ('Opening', 'prepared', 'talk'))
+                self.command(controller, action='next_presentation', revision=2, request='qa')
+                self.assertEqual(self.outcome(controller)['type'], 'ack')
+                state = display.receive_json()['state']
+                self.assertEqual((state['playlist_phase'], state['selected_duration_seconds']), ('qa', 120))
+        with self.socket() as controller:
+            state = controller.receive_json()['state']
+            self.assertEqual(state['playlist'], entries)
+            self.assertEqual(state['playlist_phase'], 'qa')
+            self.command(controller, action='set_playlist', revision=2, request='stale-list', payload={'entries': []})
+            self.assertEqual(self.outcome(controller)['code'], 'revision_conflict')
+
+    def test_playlist_payload_limits(self):
+        entries = [dict(title='Presentation ' + str(index) + 'x' * 100,
+                        duration_seconds=10800, qa_duration_seconds=10800) for index in range(100)]
+        with self.socket() as controller:
+            controller.receive_json()
+            self.command(controller, action='set_playlist', payload={'entries': entries})
+            self.assertEqual(self.outcome(controller)['type'], 'ack')
+            for index, bad in enumerate(([dict(entries[0], unexpected=True)], entries + [entries[0]],
+                                         [dict(entries[0], duration_seconds=True)],
+                                         [dict(entries[0], title=' ')],
+                                         [dict(entries[0], qa_duration_seconds=-60)])):
+                self.command(controller, action='set_playlist', revision=1, request='invalid-'+str(index),
+                             payload={'entries': bad})
+                self.assertEqual(self.outcome(controller)['code'], 'invalid_transition')
+            self.assertEqual(json.loads(server.get(self.sid)[2])['playlist'], entries)
+
+    def test_legacy_snapshot_playlist_defaults(self):
+        state = json.loads(server.get(self.sid)[2])
+        for field in ('playlist', 'playlist_index', 'playlist_phase'):
+            state.pop(field)
+        with server.db:
+            server.db.execute('UPDATE sessions SET state=? WHERE id=?', (json.dumps(state), self.sid))
+        with self.socket() as controller:
+            snapshot = controller.receive_json()['state']
+            self.assertEqual(snapshot['playlist'], [])
+            self.assertIsNone(snapshot['playlist_index'])
+            self.command(controller, action='set_playlist', payload={'entries': []})
+            self.assertEqual(self.outcome(controller)['type'], 'ack')
+
     def test_security_and_health(self):
         self.assertEqual(self.client.get('/readyz').status_code,200)
         self.assertIn('Content-Security-Policy',self.client.get('/').headers)

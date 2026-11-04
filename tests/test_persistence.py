@@ -25,6 +25,30 @@ class Persistence(unittest.TestCase):
             restored=json.loads(subprocess.check_output([sys.executable,'-c',code],env=env,text=True))
             self.assertEqual(first,restored)
 
+    def test_playlist_restart(self):
+        with tempfile.TemporaryDirectory() as folder:
+            env = dict(os.environ, DATABASE_PATH=folder+'/playlist.db')
+            code = """
+import json, os
+import app
+from timer import initial, mutate
+if not app.get('playlist'):
+    state = mutate(initial(), 'set_playlist', {'entries': [
+        dict(title='Persisted talk', duration_seconds=900, qa_duration_seconds=180)]})
+    state = mutate(state, 'load_presentation', {'index': 0, 'phase': 'qa'})
+    with app.db:
+        app.db.execute('INSERT INTO sessions VALUES(?,?,?,?,?,?,?)',
+                       ('playlist', 'controlhash', 'displayhash', json.dumps(state), 0, 0, 9999999999999))
+print(app.get('playlist')[2])
+app.db.close()
+"""
+            first = json.loads(subprocess.check_output([sys.executable, '-c', code], env=env, text=True))
+            second = json.loads(subprocess.check_output([sys.executable, '-c', code], env=env, text=True))
+            self.assertEqual(first, second)
+            self.assertEqual(second['playlist'][0]['title'], 'Persisted talk')
+            self.assertEqual((second['playlist_index'], second['playlist_phase']), (0, 'qa'))
+            self.assertEqual(second['paused_remaining_ms'], 180000)
+
     def test_receipt_replay_across_processes(self):
         with tempfile.TemporaryDirectory() as folder:
             env=dict(os.environ,DATABASE_PATH=folder+'/restart.db',BASE_URL='http://testserver',ALLOWED_ORIGINS='http://testserver')

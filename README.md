@@ -2,6 +2,8 @@
 
 Conference countdown with private controller links and read-only presenter displays. This completes the prototype's server/client workflow; see docs/acceptance.md for verified results and outstanding release acceptance.
 
+Build a presentation playlist in the controller: add titles, talk durations and Q&A durations, reorder or remove entries, then select **Save playlist**. Load a talk directly or use **Next** to move through each talk and its Q&A. Each transition prepares the countdown; select **Start** when the speaker is ready. Download/upload playlists as reusable JSON files. Saved lists persist with the session. See the [operator guide](docs/operator.md#presentation-playlists) for details.
+
 Run Python 3.12+ in a virtual environment, then:
 
 ```sh

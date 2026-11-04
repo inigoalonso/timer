@@ -1,1 +1,71 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Stage time</title><link rel="stylesheet" href="/static/style.css"><main><header><h1>◷ Stage time</h1><small id="connection">Ready</small></header><section id="landing" class="panel"><h2>Give every speaker their time.</h2><p class="muted">One private controller. A clear countdown on every presenter display.</p><button class="primary" id="create">Create a timer</button></section><section id="session" hidden><div class="panel clock"><h2 id="title"></h2><div id="digits" class="digits green">Loading</div><div id="status" class="status" aria-live="polite">Loading</div><small id="phase" aria-live="polite"></small></div><div id="controller"><div class="panel"><small>DURATION</small><div id="presets" class="row"></div><div class="row"><input id="minutes" type="number" min="1" max="180" value="30" aria-label="Custom minutes"><button id="custom">Set minutes</button><input id="titleInput" maxlength="120" placeholder="Presentation title" aria-label="Presentation title"><button id="saveTitle">Save title</button></div><div class="row"><button class="primary" id="start">Start</button><button id="pause">Pause</button><button id="reset">Reset</button><button id="minus">−1 minute</button><button id="plus">+1 minute</button></div><small id="presence"></small></div><div id="links" class="panel"><label>Private controller link<input id="controllerLink" readonly></label><div class="row"><button id="copyController">Copy controller link</button><a id="openController" target="_blank" rel="noopener">Open controller</a></div><h3>Connect a presenter display</h3><p class="muted">Keep the controller link private. Open this display link on the presenter’s device.</p><input id="displayLink" readonly aria-label="Display link"><div class="row"><button id="copy">Copy display link</button><a id="open" target="_blank" rel="noopener">Open display ↗</a></div><div id="qr" aria-label="Display pairing QR code"></div><p id="pairingHelp">Generate a new display link if it is unavailable in this browser. Previous display links will stop working.</p><button id="rotate">Generate new display link</button><p id="expiry"></p></div></div><div class="row"><button id="activate">Activate display</button><small id="fullscreen"></small><small id="wake">Screen wake prevention is not active</small></div></section><p id="message" role="status"></p></main><script src="/static/vendor/qrcode.js"></script><script src="/static/vendor/NoSleep.min.js"></script><script src="/static/app.js"></script></html>
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stage time</title>
+<link rel="stylesheet" href="/static/style.css">
+<main>
+<header><h1>◷ Stage time</h1><small id="connection">Ready</small></header>
+<section id="landing" class="panel">
+	<h2>Give every speaker their time.</h2>
+	<p class="muted">One private controller. A clear countdown on every presenter display.</p>
+	<button class="primary" id="create">Create a timer</button>
+</section>
+<section id="session" hidden>
+	<div class="panel clock">
+		<h2 id="title"></h2>
+		<div id="presentationPhase" class="presentation-phase" hidden></div>
+		<div id="digits" class="digits green">Loading</div>
+		<div id="status" class="status" aria-live="polite">Loading</div>
+		<small id="phase" aria-live="polite"></small>
+	</div>
+	<div id="controller">
+		<div class="panel">
+			<small>DURATION</small>
+			<div id="presets" class="row"></div>
+			<div class="row">
+				<input id="minutes" type="number" min="1" max="180" value="30" aria-label="Custom minutes">
+				<button id="custom">Set minutes</button>
+				<input id="titleInput" maxlength="120" placeholder="Presentation title" aria-label="Presentation title">
+				<button id="saveTitle">Save title</button>
+			</div>
+			<div class="row">
+				<button class="primary" id="start">Start</button><button id="pause">Pause</button>
+				<button id="reset">Reset</button><button id="minus">−1 minute</button><button id="plus">+1 minute</button>
+			</div>
+			<small id="presence"></small>
+		</div>
+		<section id="playlist" class="playlist-section" aria-labelledby="playlistHeading">
+			<div class="playlist-heading"><h2 id="playlistHeading">Playlist</h2><small id="playlistCount">0 presentations</small></div>
+			<div class="row playlist-toolbar">
+				<button id="addPresentation">Add presentation</button>
+				<button id="savePlaylist" class="primary">Save playlist</button>
+				<button id="discardPlaylist">Discard edits</button>
+				<button id="downloadPlaylist">Download</button>
+				<button id="uploadPlaylist">Upload</button>
+				<input id="playlistFile" type="file" accept=".json,application/json" hidden aria-label="Upload playlist JSON">
+			</div>
+			<p id="playlistNotice" class="muted" role="status">No presentations</p>
+			<ol id="playlistEntries" class="playlist-entries"></ol>
+			<div class="row"><button id="nextPresentation" class="primary">Load first presentation</button></div>
+		</section>
+		<div id="links" class="panel">
+			<label>Private controller link<input id="controllerLink" readonly></label>
+			<div class="row"><button id="copyController">Copy controller link</button><a id="openController" target="_blank" rel="noopener">Open controller</a></div>
+			<h3>Connect a presenter display</h3>
+			<p class="muted">Keep the controller link private. Open this display link on the presenter’s device.</p>
+			<input id="displayLink" readonly aria-label="Display link">
+			<div class="row"><button id="copy">Copy display link</button><a id="open" target="_blank" rel="noopener">Open display ↗</a></div>
+			<div id="qr" aria-label="Display pairing QR code"></div>
+			<p id="pairingHelp">Generate a new display link if it is unavailable in this browser. Previous display links will stop working.</p>
+			<button id="rotate">Generate new display link</button><p id="expiry"></p>
+		</div>
+	</div>
+	<div class="row"><button id="activate">Activate display</button><small id="fullscreen"></small><small id="wake">Screen wake prevention is not active</small></div>
+</section>
+<p id="message" role="status"></p>
+</main>
+<script src="/static/vendor/qrcode.js"></script>
+<script src="/static/vendor/NoSleep.min.js"></script>
+<script src="/static/app.js"></script>
+</html>
