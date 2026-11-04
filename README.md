@@ -2,9 +2,9 @@
 
 Conference countdown with private controller links and read-only presenter displays. This completes the prototype's server/client workflow; see docs/acceptance.md for verified results and outstanding release acceptance.
 
-Build a presentation playlist in the controller: add titles, talk durations and Q&A durations, reorder or remove entries, then select **Save playlist**. Load a talk directly or use **Next** to move through each talk and its Q&A. Each transition prepares the countdown; select **Start** when the speaker is ready. Download/upload playlists as reusable JSON files. Saved lists persist with the session. See the [operator guide](docs/operator.md#presentation-playlists) for details.
+The controller separates **Run**, **Playlist** and **Connect** into tabs, with live countdown controls always available. Build and reorder presentations in **Playlist**, select **Save changes**, then load talks and Q&A from **Run**. Each transition prepares the countdown; select **Start** when ready. Download/upload lists as reusable JSON files. Presenter displays have no app header or controller controls, with full-screen/wake controls that hide when idle. See the [operator guide](docs/operator.md) for details.
 
-Enable **Browser notifications** on the controller for five-minute, one-minute and time-up alerts. Presenter displays never send notifications. Browser permission and HTTPS (or localhost) are required; see [notification support and limitations](docs/operator.md#browser-notifications). Run notification regression tests with `node --test tests/test_notifications.cjs`.
+Enable **Browser notifications** in the controller's settings menu for five-minute, one-minute and time-up alerts. Presenter displays never send notifications. Browser permission and HTTPS (or localhost) are required; see [notification support and limitations](docs/operator.md#browser-notifications). Run frontend interaction and notification regression tests with `node --test tests/*.cjs`.
 
 Run Python 3.12+ in a virtual environment, then:
 
@@ -20,4 +20,4 @@ Open http://localhost:8000 (the default allowed origin). If opening 127.0.0.1 in
 - [WebSocket protocol and refinements](docs/protocol.md)
 - [Acceptance evidence and device checklist](docs/acceptance.md)
 
-Dependencies are constrained in requirements.lock; container runtime dependencies are selected by requirements.txt. Locally bundled QR Code Generator 1.4.4 and NoSleep.js 0.12.0 retain notices in static/vendor. No remote scripts or pairing services are used. The base container image is pinned by digest.
+Dependencies are constrained in requirements.lock; container runtime dependencies are selected by requirements.txt. Locally bundled QR Code Generator 1.4.4, NoSleep.js 0.12.0 and Lucide 0.468.0 retain notices in static/vendor. No remote scripts, fonts or pairing services are used. The base container image is pinned by digest.

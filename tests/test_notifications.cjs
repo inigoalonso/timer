@@ -62,12 +62,18 @@ function browser(role, permission = 'granted', supported = true) {
   const element = id => {
     if (!elements.has(id)) elements.set(id, {
       value: '', textContent: '', checked: false, disabled: false, hidden: false,
-      dataset: {}, style: {}, children: [], classList: {toggle() {}},
+      dataset: {}, style: {}, children: [], attributes: {}, classList: {toggle() {}},
+      setAttribute(name, value) { this.attributes[name] = value; }, querySelectorAll: () => [],
+      focus() { this.focused = true; },
       parentElement: {clientWidth: 1000}, replaceChildren() {}, append() {},
     });
     return elements.get(id);
   };
   const alerts = [];
+  const commands = [];
+  const tabs = ['run', 'playlist', 'links'].map(name => {
+    const tab = element('tab-'+name); tab.dataset.tab = name; return tab;
+  });
   let requests = 0;
   class BrowserNotification {
     static permission = permission;
@@ -77,19 +83,20 @@ function browser(role, permission = 'granted', supported = true) {
   const context = createContext({
     document: {
       getElementById: element, body: {classList: {toggle() {}}},
-      querySelectorAll: () => [], createElement: () => element(Symbol()), addEventListener() {},
+      querySelectorAll: selector => selector === '[data-tab]' ? tabs : [], createElement: () => element(Symbol()), addEventListener() {},
     },
     location: {pathname: `/${role}/session`, hash: '#token', protocol: 'https:', host: 'timer.test', href: 'https://timer.test'},
     localStorage: {getItem: () => null}, performance: {now: () => 1000},
-    WebSocket: class {static OPEN = 1;},
+    WebSocket: class {static OPEN = 1; send(message) { commands.push(JSON.parse(message)); }},
+    crypto: {randomUUID: () => 'test-request'},
     setInterval() {}, setTimeout() {}, clearTimeout() {}, addEventListener() {},
-    isSecureContext: true,
+    isSecureContext: true, innerHeight: 900,
   });
   context.window = context;
   if (supported) context.Notification = BrowserNotification;
   runInContext(readFileSync(join(__dirname, '../static/notifications.js'), 'utf8'), context);
   runInContext(readFileSync(join(__dirname, '../static/app.js'), 'utf8'), context);
-  return {context, element, alerts, requests: () => requests};
+  return {context, element, alerts, commands, requests: () => requests};
 }
 
 function runCountdown(context) {
@@ -140,4 +147,66 @@ test('blocked or unsupported browsers disable opt-in without errors', () => {
     assert.deepEqual(app.alerts, []);
     assert.equal(app.requests(), 0);
   }
+});
+
+test('unified transport pauses a running timer and resumes a paused timer', () => {
+  const app = browser('control');
+  runCountdown(app.context);
+  assert.equal(app.element('start').dataset.label, 'Pause');
+  app.element('start').onclick();
+  assert.equal(app.commands.at(-1).action, 'pause');
+  runInContext("pending=null;state.mode='paused';state.paused_remaining_ms=1000;render();", app.context);
+  assert.equal(app.element('start').dataset.label, 'Resume');
+  app.element('start').onclick();
+  assert.equal(app.commands.at(-1).action, 'start');
+});
+
+test('tabs switch visible panels and support keyboard navigation', () => {
+  const app = browser('control');
+  app.element('tab-playlist').onclick();
+  assert.equal(app.element('playlist').hidden, false);
+  assert.equal(app.element('run').hidden, true);
+  assert.equal(app.element('tab-playlist').attributes['aria-selected'], 'true');
+  assert.equal(app.element('tab-playlist').tabIndex, 0);
+  app.element('tab-playlist').onkeydown({key: 'ArrowRight', preventDefault() {}});
+  assert.equal(app.element('links').hidden, false);
+  assert.equal(app.element('tab-links').focused, true);
+  app.element('tab-links').onkeydown({key: 'Home', preventDefault() {}});
+  assert.equal(app.element('run').hidden, false);
+});
+
+test('save controls appear only for dirty playlists without blocking tabs offline', () => {
+  const app = browser('control');
+  runCountdown(app.context);
+  assert.equal(app.element('playlistSaveBar').hidden, true);
+  runInContext('playlistDirty=true;online=false;render();', app.context);
+  assert.equal(app.element('playlistSaveBar').hidden, false);
+  assert.equal(app.element('draftBadge').hidden, false);
+  assert.equal(app.element('runNotice').hidden, false);
+  assert.equal(app.element('nextPresentation').disabled, true);
+  app.element('tab-links').onclick();
+  assert.equal(app.element('links').hidden, false);
+});
+
+test('display shows connection warnings only when disconnected and never shows settings', () => {
+  const app = browser('display');
+  runCountdown(app.context);
+  assert.equal(app.element('displayTools').hidden, false);
+  assert.equal(app.element('settings').hidden, true);
+  assert.equal(app.element('displayConnection').hidden, true);
+  runInContext('disconnected();', app.context);
+  assert.equal(app.element('displayConnection').hidden, false);
+  assert.match(app.element('displayConnection').textContent, /Disconnected/);
+  const controller = browser('control');
+  assert.equal(controller.element('displayTools').hidden, true);
+});
+
+test('playlist reordering marks drafts dirty and rejects invalid destinations', () => {
+  const app = browser('control');
+  runCountdown(app.context);
+  runInContext("playlistDraft=[{title:'First',duration_seconds:600,qa_duration_seconds:0},{title:'Second',duration_seconds:900,qa_duration_seconds:60}];reorderPresentation(0,1);", app.context);
+  assert.equal(runInContext('playlistDraft[0].title', app.context), 'Second');
+  assert.equal(app.element('playlistSaveBar').hidden, false);
+  runInContext('reorderPresentation(0,null);reorderPresentation(0,99);', app.context);
+  assert.equal(runInContext('playlistDraft[0].title', app.context), 'Second');
 });

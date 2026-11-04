@@ -4,3 +4,6 @@ NoSleep.js 0.12.0: see NoSleep-LICENSE.
 Sources: https://www.npmjs.com/package/qrcode-generator/v/1.4.4
 https://www.npmjs.com/package/nosleep.js/v/0.12.0
 Both assets are bundled locally; pairing links are never sent to an external QR service.
+Lucide 0.468.0: see lucide-LICENSE (ISC, with retained Feather MIT notice).
+Source: https://www.npmjs.com/package/lucide/v/0.468.0
+Icons are bundled locally; no external scripts or fonts are loaded.
